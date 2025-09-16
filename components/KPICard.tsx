@@ -82,7 +82,7 @@ export default function KPICard({
               {changeType === 'positive' && <TrendingUp className="w-3 h-3 mr-1" />}
               {changeType === 'negative' && <TrendingDown className="w-3 h-3 mr-1" />}
               <span>
-                {change > 0 ? '+' : ''}{change.toFixed(2)}%
+                {typeof change === 'number' ? `${change > 0 ? '+' : ''}${change.toFixed(2)}` : '0.00'}%
               </span>
             </div>
           )}

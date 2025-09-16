@@ -1,5 +1,5 @@
 import { format, subDays, parseISO } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 const IST_TIMEZONE = 'Asia/Kolkata';
 
@@ -8,7 +8,7 @@ const IST_TIMEZONE = 'Asia/Kolkata';
  */
 export function todayIST(): string {
   const now = new Date();
-  const istDate = utcToZonedTime(now, IST_TIMEZONE);
+  const istDate = toZonedTime(now, IST_TIMEZONE);
   return format(istDate, 'yyyy-MM-dd');
 }
 
@@ -17,7 +17,7 @@ export function todayIST(): string {
  */
 export function nowIST(): Date {
   const now = new Date();
-  return utcToZonedTime(now, IST_TIMEZONE);
+  return toZonedTime(now, IST_TIMEZONE);
 }
 
 /**
@@ -25,7 +25,7 @@ export function nowIST(): Date {
  */
 export function toIST(dateString: string): Date {
   const date = parseISO(dateString);
-  return utcToZonedTime(date, IST_TIMEZONE);
+  return toZonedTime(date, IST_TIMEZONE);
 }
 
 /**
@@ -33,7 +33,7 @@ export function toIST(dateString: string): Date {
  */
 export function formatDisplayDate(date: string | Date): string {
   const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  const istDate = utcToZonedTime(dateObj, IST_TIMEZONE);
+  const istDate = toZonedTime(dateObj, IST_TIMEZONE);
   return format(istDate, 'MMM dd, yyyy');
 }
 
@@ -41,7 +41,7 @@ export function formatDisplayDate(date: string | Date): string {
  * Format a date for API calls (YYYY-MM-DD)
  */
 export function formatAPIDate(date: Date): string {
-  const istDate = utcToZonedTime(date, IST_TIMEZONE);
+  const istDate = toZonedTime(date, IST_TIMEZONE);
   return format(istDate, 'yyyy-MM-dd');
 }
 

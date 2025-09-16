@@ -69,7 +69,7 @@ export default function DashboardPage() {
         setActualDataDate(selectedDate)
         setFallbackAttempted(false)
         return data
-      } catch (error) {
+      } catch (error: any) {
         // If it's today and no data, try fallback dates
         if (isToday(selectedDate) && !fallbackAttempted) {
           const fallbackDates = getFallbackDates().slice(1) // Skip today, already tried
@@ -77,7 +77,7 @@ export default function DashboardPage() {
           for (const fallbackDate of fallbackDates) {
             try {
               const data = await fetchMetrics(fallbackDate, selectedSymbols)
-              if (data.prices.length > 0) {
+              if (data && data.prices && data.prices.length > 0) {
                 setActualDataDate(fallbackDate)
                 setFallbackAttempted(true)
                 toast.success(
@@ -105,12 +105,19 @@ export default function DashboardPage() {
 
   const { data: recommendationsData, error: recommendationsError, isLoading: recommendationsLoading, mutate: mutateRecommendations } = useSWR(
     ['recommendations', actualDataDate || selectedDate],
-    () => fetchRecommendations(actualDataDate || selectedDate),
+    () => {
+      try {
+        return fetchRecommendations(actualDataDate || selectedDate)
+      } catch (error: any) {
+        console.warn('Failed to load recommendations:', error?.message || 'Unknown error')
+        throw error
+      }
+    },
     {
       revalidateOnFocus: false,
       refreshInterval: 10 * 60 * 1000, // 10 minutes
       onError: (error) => {
-        console.warn('Failed to load recommendations:', error.message)
+        console.warn('Failed to load recommendations:', error?.message || 'Unknown error')
       }
     }
   )
@@ -126,16 +133,16 @@ export default function DashboardPage() {
     }
 
     const metrics = metricsData.metrics
-    const portfolioReturn = metrics.reduce((sum, m) => sum + m.return_pct, 0) / metrics.length
+    const portfolioReturn = metrics.reduce((sum, m) => sum + (m.return_pct || 0), 0) / metrics.length
     
-    const sortedByReturn = [...metrics].sort((a, b) => b.return_pct - a.return_pct)
+    const sortedByReturn = [...metrics].sort((a, b) => (b.return_pct || 0) - (a.return_pct || 0))
     const topGainer = sortedByReturn[0]
     const topLoser = sortedByReturn[sortedByReturn.length - 1]
 
     return {
       portfolioReturn,
-      topGainer: { symbol: topGainer.symbol, return: topGainer.return_pct },
-      topLoser: { symbol: topLoser.symbol, return: topLoser.return_pct }
+      topGainer: { symbol: topGainer.symbol, return: topGainer.return_pct || 0 },
+      topLoser: { symbol: topLoser.symbol, return: topLoser.return_pct || 0 }
     }
   }, [metricsData])
 
@@ -248,12 +255,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Fallback Notice */}
-          {isShowingFallbackData && (
+          {isShowingFallbackData && displayDate && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
                 <p className="text-amber-800 text-sm">
-                  <strong>Note:</strong> No data available for {getDaysAgoText(selectedDate)}. 
+                  <strong>Note:</strong> No data available for {selectedDate ? getDaysAgoText(selectedDate) : 'today'}. 
                   Showing data from {getDaysAgoText(displayDate)} instead.
                 </p>
               </div>
@@ -298,9 +305,9 @@ export default function DashboardPage() {
           />
           <div className="xl:row-span-2">
             <AnalystPanel
-              recommendations={recommendationsData}
+              recommendations={recommendationsData || null}
               loading={recommendationsLoading}
-              error={recommendationsError?.message}
+              error={recommendationsError ? (recommendationsError.message || 'Unknown error') : null}
             />
           </div>
         </div>

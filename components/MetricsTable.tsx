@@ -10,7 +10,8 @@ interface MetricsTableProps {
 }
 
 export default function MetricsTable({ prices, metrics, loading = false }: MetricsTableProps) {
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (typeof value !== 'number') return '$0.00'
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -19,11 +20,13 @@ export default function MetricsTable({ prices, metrics, loading = false }: Metri
     }).format(value)
   }
 
-  const formatPercent = (value: number) => {
+  const formatPercent = (value: number | null | undefined) => {
+    if (typeof value !== 'number') return '0.00%'
     return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
   }
 
-  const formatVolume = (value: number) => {
+  const formatVolume = (value: number | null | undefined) => {
+    if (typeof value !== 'number') return '0'
     if (value >= 1e9) {
       return `${(value / 1e9).toFixed(1)}B`
     } else if (value >= 1e6) {
