@@ -1,6 +1,9 @@
 import { APIError } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://railpulse-production.up.railway.app';
+// Use the proxy API route for client-side requests to avoid CORS issues
+const API_BASE_URL = typeof window === 'undefined'
+  ? process.env.NEXT_PUBLIC_API_URL || 'https://railpulse-production.up.railway.app'
+  : '/api/proxy';
 
 /**
  * Generic fetcher function for SWR
