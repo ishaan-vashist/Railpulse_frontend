@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -29,29 +29,40 @@ import { fetchMetrics, fetchRecommendations } from '@/lib/api'
 import { todayIST, getFallbackDates, getDaysAgoText, isToday } from '@/lib/date'
 import { DEFAULT_SYMBOLS, ChartDataPoint, KPIData } from '@/lib/types'
 
-export default function DashboardPage() {
+// Client components
+
+// Component that uses useSearchParams
+function SymbolsManager({ 
+  onSymbolsInitialized, 
+  selectedSymbols 
+}: { 
+  onSymbolsInitialized: (symbols: string[]) => void,
+  selectedSymbols: string[]
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const initializedRef = React.useRef(false)
   
-  // State management
-  const [selectedDate, setSelectedDate] = useState(todayIST())
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
-  const [actualDataDate, setActualDataDate] = useState<string | null>(null)
-  const [fallbackAttempted, setFallbackAttempted] = useState(false)
-
-  // Initialize symbols from URL params
+  // Initialize symbols from URL params only once
   useEffect(() => {
     const symbolsParam = searchParams.get('symbols')
-    if (symbolsParam) {
+    if (symbolsParam && !initializedRef.current) {
       const symbols = symbolsParam.split(',').filter(Boolean)
-      if (symbols.length > 0) {
-        setSelectedSymbols(symbols)
+      if (symbols.length > 0 && JSON.stringify(symbols) !== JSON.stringify(selectedSymbols)) {
+        onSymbolsInitialized(symbols)
+        initializedRef.current = true;
       }
+    } else if (!initializedRef.current) {
+      // Mark as initialized even if no symbols in URL
+      initializedRef.current = true;
     }
-  }, [searchParams])
+  }, [searchParams, onSymbolsInitialized, selectedSymbols])
 
   // Update URL when symbols change
   useEffect(() => {
+    // Skip the initial render to avoid an unnecessary URL update
+    if (!initializedRef.current) return;
+    
     const params = new URLSearchParams(searchParams.toString())
     if (selectedSymbols.length > 0) {
       params.set('symbols', selectedSymbols.join(','))
@@ -60,6 +71,45 @@ export default function DashboardPage() {
     }
     router.replace(`/dashboard?${params.toString()}`, { scroll: false })
   }, [selectedSymbols, router, searchParams])
+  
+  return null
+}
+
+// Client component for time display to avoid hydration mismatch
+function TimeDisplay() {
+  const [time, setTime] = useState<string>('')
+  
+  useEffect(() => {
+    // Only set the time on the client side
+    setTime(new Date().toLocaleTimeString('en-US'))
+    
+    // Optional: Update time every minute
+    const interval = setInterval(() => {
+      setTime(new Date().toLocaleTimeString('en-US'))
+    }, 60000)
+    
+    return () => clearInterval(interval)
+  }, [])
+  
+  // Don't render anything until client-side
+  if (!time) return null
+  
+  return <span>{time}</span>
+}
+
+export default function DashboardPage() {
+  // State management
+  const [selectedDate, setSelectedDate] = useState(todayIST())
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
+  const [actualDataDate, setActualDataDate] = useState<string | null>(null)
+  const [fallbackAttempted, setFallbackAttempted] = useState(false)
+  
+  const handleSymbolsInitialized = (symbols: string[]) => {
+    // Only update if the symbols are actually different
+    if (JSON.stringify(symbols) !== JSON.stringify(selectedSymbols)) {
+      setSelectedSymbols(symbols)
+    }
+  }
 
   // Data fetching with fallback logic
   const { data: metricsData, error: metricsError, isLoading: metricsLoading, mutate: mutateMetrics } = useSWR(
@@ -235,6 +285,12 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Suspense fallback={<div>Loading symbols...</div>}>
+          <SymbolsManager 
+            onSymbolsInitialized={handleSymbolsInitialized}
+            selectedSymbols={selectedSymbols}
+          />
+        </Suspense>
         {/* Dashboard Overview */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Market Overview</h2>
@@ -409,7 +465,7 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-gray-800">Market Analysis</h3>
             <div className="flex items-center gap-3">
               <div className="text-xs font-medium text-gray-500 hidden md:block">
-                Last updated: {new Date().toLocaleTimeString()}
+                Last updated: <TimeDisplay />
               </div>
               <button 
                 onClick={handleRefresh} 
