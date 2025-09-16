@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Define the backend API URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://railpulse-production.up.railway.app';
 
 /**
@@ -11,20 +12,28 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    // Reconstruct the path from the path segments
-    const path = params.path.join('/');
+    // Get the path segments and join them
+    const pathSegments = params.path || [];
+    const pathPart = pathSegments.join('/');
     
-    // Get the search params from the request URL
-    const { searchParams } = new URL(request.url);
+    // Create the full URL string manually to avoid URL constructor issues
+    let fullUrl = API_BASE_URL;
+    if (!fullUrl.endsWith('/') && pathPart) {
+      fullUrl += '/';
+    }
+    fullUrl += pathPart;
     
-    // Build the target URL with search params
-    const targetUrl = new URL(`/${path}`, API_BASE_URL);
-    searchParams.forEach((value, key) => {
-      targetUrl.searchParams.append(key, value);
-    });
-
+    // Add query parameters from the original request
+    const originalUrl = new URL(request.url);
+    const searchParams = originalUrl.searchParams;
+    if (searchParams.toString()) {
+      fullUrl += `?${searchParams.toString()}`;
+    }
+    
+    console.log(`Proxying GET request to: ${fullUrl}`);
+    
     // Forward the request to the API
-    const response = await fetch(targetUrl.toString(), {
+    const response = await fetch(fullUrl, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -55,23 +64,31 @@ export async function POST(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    // Reconstruct the path from the path segments
-    const path = params.path.join('/');
+    // Get the path segments and join them
+    const pathSegments = params.path || [];
+    const pathPart = pathSegments.join('/');
     
-    // Get the search params from the request URL
-    const { searchParams } = new URL(request.url);
+    // Create the full URL string manually to avoid URL constructor issues
+    let fullUrl = API_BASE_URL;
+    if (!fullUrl.endsWith('/') && pathPart) {
+      fullUrl += '/';
+    }
+    fullUrl += pathPart;
     
-    // Build the target URL with search params
-    const targetUrl = new URL(`/${path}`, API_BASE_URL);
-    searchParams.forEach((value, key) => {
-      targetUrl.searchParams.append(key, value);
-    });
-
+    // Add query parameters from the original request
+    const originalUrl = new URL(request.url);
+    const searchParams = originalUrl.searchParams;
+    if (searchParams.toString()) {
+      fullUrl += `?${searchParams.toString()}`;
+    }
+    
+    console.log(`Proxying POST request to: ${fullUrl}`);
+    
     // Get the request body
     const body = await request.json().catch(() => null);
 
     // Forward the request to the API
-    const response = await fetch(targetUrl.toString(), {
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

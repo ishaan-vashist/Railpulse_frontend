@@ -32,17 +32,38 @@ export async function fetcher<T>(url: string): Promise<T> {
  * Build API URL with base URL
  */
 export function buildAPIUrl(endpoint: string, params?: Record<string, string>): string {
-  const url = new URL(endpoint, API_BASE_URL);
-  
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) {
-        url.searchParams.append(key, value);
-      }
-    });
+  // Handle client-side proxy differently
+  if (typeof window !== 'undefined' && API_BASE_URL === '/api/proxy') {
+    // For client-side, use relative URL with the proxy path
+    const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    let url = `/api/proxy/${path}`;
+    
+    // Add query parameters if provided
+    if (params && Object.keys(params).length > 0) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+          searchParams.append(key, value);
+        }
+      });
+      url += `?${searchParams.toString()}`;
+    }
+    
+    return url;
+  } else {
+    // For server-side, use the full URL
+    const url = new URL(endpoint, API_BASE_URL);
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+          url.searchParams.append(key, value);
+        }
+      });
+    }
+    
+    return url.toString();
   }
-  
-  return url.toString();
 }
 
 /**
